@@ -36,19 +36,26 @@ app = FastAPI(
 def startup_event():
     ensure_indexes()
 
-# Controlled CORS configuration for development
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000"
-).split(",")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# CORS configuration supporting development and cloud deployments
+raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+if raw_origins.strip() == "*":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r".*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_origin_regex=r"https://.*\.netlify\.app|https://.*\.vercel\.app|https://.*\.onrender\.com",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Register API v1 routers
 app.include_router(health_router, prefix="/api/v1")
